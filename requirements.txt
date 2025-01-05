@@ -2,3 +2,4 @@ streamlit
 docxtpl
 pandas
 Python-IO
+numpy
