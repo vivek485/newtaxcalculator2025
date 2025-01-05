@@ -105,6 +105,7 @@ if getdata:
     df['total_tax']= df['educess'] + df['tot_itr']
     df['payable_tax'] = round(df['total_tax'] - df['tax_paid'])
     df['refundable_tax'] = np.where((df.payable_tax < 0),abs(df.payable_tax),0)
+    df = df.fillna(0)
 
     #df = pd.DataFrame({'name': name, 'gross_salary': [gross_salary], 'other_salary': [other_salary], 'st_deduction': [st_deduction], 'income': [income], 'totalincome': [totalincome], 'upto30l': [upto30l], 'upto60l': [upto60l], 'upto90l': [upto90l], 'upto12l': [upto12l], 'upto15l': [upto15l], 'greater150l': [greater150l], 'tot_itr': [tot_itr], 'educess': [educess], 'total_tax': [total_tax], 'payable_tax': [payable_tax], 'refundable_tax': [refundable_tax]})
     transposed_df = df.transpose()
