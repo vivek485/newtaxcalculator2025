@@ -40,17 +40,17 @@ def calc1(x):
     elif x >  700000 :
         return  0.05 * 400000
 def calc2(x):
-    if (x > 700000) and (x < 900000):
+    if (x > 700000) and (x < 1000000):
         return 0.1 * (x - 700000)
     elif x >  900000 :
-        return  0.1 * 200000
+        return  0.1 * 300000
     else:
         return int(0)
 def calc3(x):
-    if (x > 900000) and (x < 1200000):
-        return  0.15 * (x - 900000)
+    if (x > 1000000) and (x < 1200000):
+        return  0.15 * (x - 1000000)
     elif x > 1200000 :
-        return 0.15 * 300000
+        return 0.15 * 200000
     else:
         return int(0)
 
