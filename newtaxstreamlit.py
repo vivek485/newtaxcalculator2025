@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import io
+import datetime
 
 st.set_page_config(layout="wide")
 st.title('ITR NEW TAX REGIME CALCULATION')
@@ -11,10 +12,16 @@ st.title('ITR NEW TAX REGIME CALCULATION')
 
 
 year = st.selectbox('Select Year', ['2024-25', '2025-26'])
-assesment_year = st.selectbox('Select Assessment Year', ['2023-24', '2024-25', '2025-26'])
+assesment_year = st.selectbox('Select Assessment Year', ['2024-25', '2025-26'])
 pan = st.text_input('PAN')
 eid = st.text_input('Employee ID')
 name = st.text_input('Name', key='name')
+
+dt = datetime.datetime.now().date()
+place = st.text_input('Place', key='place')
+ahc = st.text_input('AHC', key='ahc')
+district = st.text_input('District', key='district')
+
 
 gross_salary = st.number_input('GROSS SALARY', value=0)
 other_salary = st.number_input('OTHER SALARY', value=0)
@@ -22,7 +29,10 @@ st_deduction = st.number_input('ST DEDUCTION', value=75000)
 tax_paid = st.number_input('TAX PAID', value=0)
 income = gross_salary + other_salary
 totalincome = income - st_deduction
-data = {'year':year, 'assesment_year':assesment_year, 'pan':pan, 'eid':eid, 'name':name, 'tax_paid':tax_paid,'gross_salary':gross_salary, 'other_salary':other_salary, 'st_deduction':st_deduction, 'income':income, 'totalincome':totalincome}
+data = {'year':year, 'assesment_year':assesment_year, 'pan':pan, 'eid':eid, 
+'name':name, 'tax_paid':tax_paid,'gross_salary':gross_salary, 
+'other_salary':other_salary, 'st_deduction':st_deduction, 'income':income, 
+'totalincome':totalincome, 'dt':dt, 'place':place, 'ahc':ahc, 'district':district}
 
 df = pd.DataFrame(data,index=[0])
 #st.write(df)
@@ -83,7 +93,7 @@ def calc6(x):
 
 getdata = st.button('getdata')
 if getdata:
-    df['upto30l']= round((df.totalincome.apply(calc)).astype(float))
+    df['upto30l']= round((df.totalincome.apply(calc)))
     df['upto60l'] = round((df.totalincome.apply(calc1)).astype(float))
     df['upto90l'] = round((df.totalincome.apply(calc2)).astype(float))
 
