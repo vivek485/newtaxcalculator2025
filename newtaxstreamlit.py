@@ -1,4 +1,3 @@
-
 from docxtpl import DocxTemplate
 import pandas as pd
 import numpy as np
@@ -7,12 +6,21 @@ import io
 import datetime
 
 st.set_page_config(layout="wide")
-st.title('ITR NEW TAX REGIME CALCULATION')
+st.title('ITR NEW TAX REGIME CALCULATION 2026-27')
 
+# Tax slab constants for new regime FY 2025-26
+TAX_SLABS = {
+    "0-400000": 0,
+    "400001-800000": 0.05,
+    "800001-1200000": 0.10,
+    "1200001-1600000": 0.15,
+    "1600001-2000000": 0.20,
+    "2000001-2400000": 0.25,
+    "above_2400000": 0.30
+}
 
-
-year = st.selectbox('Select Year', ['2024-25', '2025-26'])
-assesment_year = st.selectbox('Select Assessment Year', ['2024-25', '2025-26'])
+year = st.selectbox('Select Year', ['2025-26', '2026-27'])
+assesment_year = st.selectbox('Select Assessment Year', ['2026-27', '2027-28'])
 pan = st.text_input('PAN')
 eid = st.text_input('Employee ID')
 name = st.text_input('Name', key='name')
@@ -22,121 +30,216 @@ place = st.text_input('Place', key='place')
 ahc = st.text_input('AHC', key='ahc')
 district = st.text_input('District', key='district')
 
-
 gross_salary = st.number_input('GROSS SALARY', value=0)
 other_salary = st.number_input('OTHER SALARY', value=0)
-st_deduction = st.number_input('ST DEDUCTION', value=75000)
+st_deduction = st.number_input('STANDARD DEDUCTION', value=75000)  # Updated as per new regime
 tax_paid = st.number_input('TAX PAID', value=0)
 income = gross_salary + other_salary
 totalincome = income - st_deduction
-data = {'year':year, 'assesment_year':assesment_year, 'pan':pan, 'eid':eid, 
-'name':name, 'tax_paid':tax_paid,'gross_salary':gross_salary, 
-'other_salary':other_salary, 'st_deduction':st_deduction, 'income':income, 
-'totalincome':totalincome, 'dt':dt, 'place':place, 'ahc':ahc, 'district':district}
 
-df = pd.DataFrame(data,index=[0])
-#st.write(df)
+def calc_tax_new_regime(totalincome):
+    """Calculate tax under new regime for FY 2025-26 with slab-wise breakdown"""
+    tax = 0
+    remaining_income = totalincome
+    
+    slab_tax = {
+        'slab1_tax': 0,  # 0-4L (Nil)
+        'slab2_tax': 0,  # 4L-8L (5%)
+        'slab3_tax': 0,  # 8L-12L (10%)
+        'slab4_tax': 0,  # 12L-16L (15%)
+        'slab5_tax': 0,  # 16L-20L (20%)
+        'slab6_tax': 0,  # 20L-24L (25%)
+        'slab7_tax': 0,  # >24L (30%)
+        'rebate': 0,
+        'tax_status': ''  # Add status message
+    }
+    
+    # Check if income is below basic exemption limit
+    if totalincome <= 120000:
+        slab_tax['tax_status'] = 'NO TAX - Income below basic exemption limit of ₹1,20,000'
+        return 0, slab_tax
+    
+    # Calculate tax from highest slab to lowest slab
+    if remaining_income > 2400000:
+        taxable_amount = remaining_income - 2400000
+        slab_tax['slab7_tax'] = round(taxable_amount * 0.30)
+        tax += slab_tax['slab7_tax']
+        remaining_income = 2400000
+    
+    if remaining_income > 2000000:
+        taxable_amount = remaining_income - 2000000
+        slab_tax['slab6_tax'] = round(taxable_amount * 0.25)
+        tax += slab_tax['slab6_tax']
+        remaining_income = 2000000
+    
+    if remaining_income > 1600000:
+        taxable_amount = remaining_income - 1600000
+        slab_tax['slab5_tax'] = round(taxable_amount * 0.20)
+        tax += slab_tax['slab5_tax']
+        remaining_income = 1600000
+    
+    if remaining_income > 1200000:
+        taxable_amount = remaining_income - 1200000
+        slab_tax['slab4_tax'] = round(taxable_amount * 0.15)
+        tax += slab_tax['slab4_tax']
+        remaining_income = 1200000
+    
+    if remaining_income > 800000:
+        taxable_amount = remaining_income - 800000
+        slab_tax['slab3_tax'] = round(taxable_amount * 0.10)
+        tax += slab_tax['slab3_tax']
+        remaining_income = 800000
+    
+    if remaining_income > 400000:
+        taxable_amount = remaining_income - 400000
+        slab_tax['slab2_tax'] = round(taxable_amount * 0.05)
+        tax += slab_tax['slab2_tax']
+        remaining_income = 400000
+    
+    # Check for rebate under section 87A (if total income <= 700000 in new regime)
+    if 120000 < totalincome <= 700000:
+        slab_tax['rebate'] = tax
+        tax = 0
+        # Reset all slab taxes since full rebate applies
+        for key in slab_tax:
+            if key not in ['rebate', 'tax_status']:
+                slab_tax[key] = 0
+        slab_tax['tax_status'] = f'REBATE APPLIED - Section 87A rebate of ₹{slab_tax["rebate"]:,.0f}'
+    elif totalincome > 700000:
+        slab_tax['tax_status'] = 'TAXABLE INCOME - No rebate applicable'
+    
+    return tax, slab_tax
 
-doc = DocxTemplate("taxnew.docx")
+data = {
+    'year': str(year), 
+    'assesment_year': str(assesment_year),
+    'pan': str(pan),
+    'eid': str(eid),
+    'name': str(name),
+    'tax_paid': float(tax_paid),
+    'gross_salary': float(gross_salary),
+    'other_salary': float(other_salary),
+    'st_deduction': float(st_deduction),
+    'income': float(income),
+    'totalincome': float(totalincome),
+    'dt': str(dt),
+    'place': str(place),
+    'ahc': str(ahc),
+    'district': str(district)
+}
 
+df = pd.DataFrame(data, index=[0])
 
-
-def calc(x):
-    if x <= 300000:
-        return  int(0)
-def calc1(x):
-    if (x > 300000) and (x < 700000):
-        return 0.05 * (x - 300000)
-    elif x >  700000 :
-        return  0.05 * 400000
-def calc2(x):
-    if (x > 700000) and (x < 1000000):
-        return 0.1 * (x - 700000)
-    elif x >  900000 :
-        return  0.1 * 300000
-    else:
-        return int(0)
-def calc3(x):
-    if (x > 1000000) and (x < 1200000):
-        return  0.15 * (x - 1000000)
-    elif x > 1200000 :
-        return 0.15 * 200000
-    else:
-        return int(0)
-
-def calc4(x):
-    if (x > 1200000) and (x < 1500000):
-        return  0.2 * (x - 1200000)
-    elif x > 1500000 :
-        return 0.2 * 300000
-    else:
-        return int(0)
-
-# def calc5(x):
-#     if (x > 1500000) and (x < 1500000):
-#         return  0.25 * (x - 1250000)
-#     elif x > 1500000 :
-#         return 0.25 * 1250000
-#     else:
-#         return int(0)
-def calc6(x):
-    if (x > 1500000) :
-        return  0.3 * (x - 1500000)
-    else:
-        return int(0)
-
-
-
-
-
-
-
-getdata = st.button('getdata')
+getdata = st.button('Calculate Tax')
 if getdata:
-    df['upto30l']= round((df.totalincome.apply(calc)))
-    df['upto60l'] = round((df.totalincome.apply(calc1)).astype(float))
-    df['upto90l'] = round((df.totalincome.apply(calc2)).astype(float))
-
-    df['upto12l']= round((df.totalincome.apply(calc3)).astype(float))
-    df['upto15l'] = round((df.totalincome.apply(calc4)).astype(float))
-
-    #df['upto150l'] = (df.totalincome.apply(calc5)).astype(float)
-    df['greater150l'] = round((df.totalincome.apply(calc6)).astype(float))
-
-
-
-
-
-
+    # Calculate tax with slab breakdown
+    totalincome_value = df['totalincome'].iloc[0]
+    tax_paid_value = df['tax_paid'].iloc[0]
+    
+    tax, slab_tax = calc_tax_new_regime(totalincome_value)
+    
+    # Add education cess (4%)
+    educess = round(0.04 * tax)
+    total_tax = tax + educess
+    
+    # Calculate final payable/refundable tax
+    if total_tax >= tax_paid_value:
+        payable_tax = round(total_tax - tax_paid_value)
+        refundable_tax = 0
+        tax_status_detail = f"TAX PAYABLE: ₹{payable_tax:,.0f}"
+    else:
+        payable_tax = 0
+        refundable_tax = round(tax_paid_value - total_tax)
+        tax_status_detail = f"REFUND DUE: ₹{refundable_tax:,.0f}"
+    
+    # Calculate income per slab
+    income_per_slab = {
+        'slab1_income': min(400000, totalincome_value),
+        'slab2_income': max(0, min(400000, totalincome_value - 400000)) if totalincome_value > 400000 else 0,
+        'slab3_income': max(0, min(400000, totalincome_value - 800000)) if totalincome_value > 800000 else 0,
+        'slab4_income': max(0, min(400000, totalincome_value - 1200000)) if totalincome_value > 1200000 else 0,
+        'slab5_income': max(0, min(400000, totalincome_value - 1600000)) if totalincome_value > 1600000 else 0,
+        'slab6_income': max(0, min(400000, totalincome_value - 2000000)) if totalincome_value > 2000000 else 0,
+        'slab7_income': max(0, totalincome_value - 2400000)
+    }
+    
+    # Create tax data dictionary
+    tax_data = {
+        'tax': tax,
+        'educess': educess,
+        'total_tax': total_tax,
+        'payable_tax': payable_tax,
+        'refundable_tax': refundable_tax,
+        'tax_status': slab_tax.get('tax_status', ''),
+        'tax_status_detail': tax_status_detail,
+        **income_per_slab,  # Add income per slab
+        **slab_tax  # Add slab-wise tax amounts
+    }
+    
+    # Convert to DataFrame and display
+    result_dict = {**df.iloc[0].to_dict(), **tax_data}
+    result_df = pd.DataFrame([result_dict])
+    
+    # Display results in a better format
+    st.subheader("Tax Calculation Summary")
+    
+    # Show status message prominently
+    if totalincome_value <= 120000:
+        st.success(f"✅ **NO TAX LIABILITY** - Income (₹{totalincome_value:,.0f}) is below the basic exemption limit of ₹1,20,000")
+        if tax_paid_value > 0:
+            st.info(f"💰 **REFUND ELIGIBLE**: ₹{refundable_tax:,.0f} - Tax paid (₹{tax_paid_value:,.0f}) will be refunded")
+    elif 120000 < totalincome_value <= 700000 and slab_tax.get('rebate', 0) > 0:
+        st.info(f"ℹ️ **SECTION 87A REBATE APPLIED**: ₹{slab_tax['rebate']:,.0f} - No tax liability")
+        if tax_paid_value > 0:
+            st.info(f"💰 **REFUND ELIGIBLE**: ₹{refundable_tax:,.0f} - Tax paid (₹{tax_paid_value:,.0f}) will be refunded")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Total Income", f"₹{totalincome_value:,.0f}")
+        st.metric("Tax Calculated", f"₹{tax:,.0f}")
+        if slab_tax.get('rebate', 0) > 0:
+            st.metric("Rebate Applied", f"₹{slab_tax['rebate']:,.0f}")
+    
+    with col2:
+        st.metric("Education Cess (4%)", f"₹{educess:,.0f}")
+        st.metric("Total Tax Liability", f"₹{total_tax:,.0f}")
+    
+    with col3:
+        st.metric("Tax Already Paid", f"₹{tax_paid_value:,.0f}")
+        if payable_tax > 0:
+            st.metric("Tax Payable", f"₹{payable_tax:,.0f}")
+        if refundable_tax > 0:
+            st.metric("Refund Amount", f"₹{refundable_tax:,.0f}", delta="Refund Due")
+    
+    # Display slab-wise breakdown only if tax is applicable
+    if totalincome_value > 120000:
+        st.subheader("Slab-wise Tax Breakdown")
+        slab_data = []
+        slabs = [
+            ("0 - 4,00,000", "Nil", f"₹{income_per_slab['slab1_income']:,.0f}", f"₹{slab_tax['slab1_tax']:,.0f}"),
+            ("4,00,001 - 8,00,000", "5%", f"₹{income_per_slab['slab2_income']:,.0f}", f"₹{slab_tax['slab2_tax']:,.0f}"),
+            ("8,00,001 - 12,00,000", "10%", f"₹{income_per_slab['slab3_income']:,.0f}", f"₹{slab_tax['slab3_tax']:,.0f}"),
+            ("12,00,001 - 16,00,000", "15%", f"₹{income_per_slab['slab4_income']:,.0f}", f"₹{slab_tax['slab4_tax']:,.0f}"),
+            ("16,00,001 - 20,00,000", "20%", f"₹{income_per_slab['slab5_income']:,.0f}", f"₹{slab_tax['slab5_tax']:,.0f}"),
+            ("20,00,001 - 24,00,000", "25%", f"₹{income_per_slab['slab6_income']:,.0f}", f"₹{slab_tax['slab6_tax']:,.0f}"),
+            ("Above 24,00,000", "30%", f"₹{income_per_slab['slab7_income']:,.0f}", f"₹{slab_tax['slab7_tax']:,.0f}")
+        ]
         
-    df['tot_itr'] =  round(df.upto60l + df.upto90l +df.upto12l + df.upto15l + df.greater150l)
-
-    df['educess']= round(0.04 * df['tot_itr'])
-    df['total_tax']= df['educess'] + df['tot_itr']
-    df['payable_tax'] = round(df['total_tax'] - df['tax_paid'])
-    df['refundable_tax'] = np.where((df.payable_tax < 0),abs(df.payable_tax),0)
-    df = df.fillna(0)
-
-    #df = pd.DataFrame({'name': name, 'gross_salary': [gross_salary], 'other_salary': [other_salary], 'st_deduction': [st_deduction], 'income': [income], 'totalincome': [totalincome], 'upto30l': [upto30l], 'upto60l': [upto60l], 'upto90l': [upto90l], 'upto12l': [upto12l], 'upto15l': [upto15l], 'greater150l': [greater150l], 'tot_itr': [tot_itr], 'educess': [educess], 'total_tax': [total_tax], 'payable_tax': [payable_tax], 'refundable_tax': [refundable_tax]})
-    transposed_df = df.transpose()
-    st.write(transposed_df)
-    dt = df.to_dict(orient='records')
-    doc.render(dt[0])
-    doc_download = doc
-
+        slab_df = pd.DataFrame(slabs, columns=["Income Range", "Tax Rate", "Taxable Amount", "Tax Amount"])
+        st.table(slab_df)
+    
+    # Generate document
+    doc_data = result_dict
+    doc = DocxTemplate("taxnew.docx")
+    doc.render(doc_data)
+    
+    # Download button
     bio = io.BytesIO()
-    doc_download.save(bio)
-    if doc_download:
-        st.download_button(
-            label="Click here to download",
-            data=bio.getvalue(),
-            file_name=(f"{name}_new_itrform.docx"),
-            mime="docx"
-        )
-        #doc.save(f"{name}_new_itrform.docx")
-
-
-
-
-
-
+    doc.save(bio)
+    st.download_button(
+        label="Download ITR Form",
+        data=bio.getvalue(),
+        file_name=f"{name}_new_itrform.docx",
+        mime="docx"
+    )
