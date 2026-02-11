@@ -184,11 +184,11 @@ if getdata:
     st.subheader("Tax Calculation Summary")
     
     # Show status message prominently
-    if totalincome_value <= 120000:
-        st.success(f"✅ **NO TAX LIABILITY** - Income (₹{totalincome_value:,.0f}) is below the basic exemption limit of ₹1,20,000")
+    if totalincome_value <= 1200000:
+        st.success(f"✅ **NO TAX LIABILITY** - Income (₹{totalincome_value:,.0f}) is below the basic exemption limit of ₹1200000")
         if tax_paid_value > 0:
             st.info(f"💰 **REFUND ELIGIBLE**: ₹{refundable_tax:,.0f} - Tax paid (₹{tax_paid_value:,.0f}) will be refunded")
-    elif 120000 < totalincome_value <= 700000 and slab_tax.get('rebate', 0) > 0:
+    elif 1200000 < totalincome_value <= 700000 and slab_tax.get('rebate', 0) > 0:
         st.info(f"ℹ️ **SECTION 87A REBATE APPLIED**: ₹{slab_tax['rebate']:,.0f} - No tax liability")
         if tax_paid_value > 0:
             st.info(f"💰 **REFUND ELIGIBLE**: ₹{refundable_tax:,.0f} - Tax paid (₹{tax_paid_value:,.0f}) will be refunded")
